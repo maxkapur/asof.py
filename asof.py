@@ -54,10 +54,14 @@ def main():
         populate_name_mapping_table()
 
     canonical_names = CanonicalNames.from_options(options)
+    console.print(f"Query: [bold]{options.query}[/bold]", highlight=False)
     console.print(canonical_names.pretty, highlight=False)
 
-    for m in get_pypi(options.when, canonical_names.pypi_name):
-        console.print(m.pretty, highlight=False)
+    if matches := get_pypi(options.when, canonical_names.pypi_name):
+        for m in matches:
+            console.print(m.pretty, highlight=False)
+    else:
+        console.print("[gray]No matches from PyPI[/gray]")
 
     if conda_command := get_conda_command():
         get_conda(conda_command, options.when, canonical_names.conda_name)
@@ -223,6 +227,8 @@ def get_pypi(when: datetime.datetime, package: str) -> list[PackageMatch]:
         f"{pypi_baseurl}/simple/{package}/",
         headers={"Accept": "application/vnd.pypi.simple.v1+json"},
     )
+    if resp.status_code == 404:
+        return []
     resp.raise_for_status()
     json_data = resp.content.decode()
 
