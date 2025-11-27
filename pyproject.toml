@@ -1,0 +1,40 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "asof"
+version = "0.1.0"
+dependencies = [
+  "packaging ~= 25.0",
+  "requests ~= 2.32",
+  "rich ~= 14.0",
+]
+requires-python = "~= 3.12"
+authors = [
+  {name = "Max Kapur", email = "git@maxkapur.com"},
+]
+maintainers = [
+  {name = "Max Kapur", email = "git@maxkapur.com"},
+]
+# description = ""
+readme = "README.md"
+license = "MIT"
+license-files = ["LICEN[CS]E.*"]
+
+[project.optional-dependencies]
+dev = [
+  "ruff",
+]
+
+[project.urls]
+Homepage = "https://github.com/maxkapur/asof.py"
+Documentation = "https://github.com/maxkapur/asof.py"
+Repository = "https://github.com/maxkapur/asof.py.git"
+"Bug Tracker" = "https://github.com/maxkapur/asof.py/issues"
+
+[project.scripts]
+asof = "asof:main"
+
+[tool.ruff.lint]
+extend-select = ["I"]
