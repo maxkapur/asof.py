@@ -23,29 +23,40 @@ from rich.console import Console
 
 VERSION_PATTERN = re.compile(VERSION_PATTERN, re.VERBOSE | re.IGNORECASE)
 
-name_mapping_url = "https://github.com/regro/cf-graph-countyfair/raw/refs/heads/master/mappings/pypi/name_mapping.json"
+session = requests.Session()
+
 
 pypi_baseurl = "https://pypi.org"
 conda_baseurl = "https://api.anaconda.org"
 conda_channels = "defaults conda-forge".split()
 
-anaconda_rss_url = (
-    "https://www.anaconda.com/docs/getting-started/anaconda/release-notes/rss.xml"
-)
-
 con = sqlite3.connect(str(Path(__file__).parent / "cache.db"))
 
-cache_lifetime_seconds = 3600 * 24
+
+downloads = {
+    "name_mapping": requests.Request(
+        "GET",
+        "https://github.com/regro/cf-graph-countyfair/raw/refs/heads/master/mappings/pypi/name_mapping.json",
+        headers={"Accept": "application/json"},
+    ).prepare(),
+    "anaconda_rss": requests.Request(
+        "GET",
+        "https://www.anaconda.com/docs/getting-started/anaconda/release-notes/rss.xml",
+        headers={"Accept": "application/xml"},
+    ).prepare(),
+}
+cache_lifetime = datetime.timedelta(days=1)
+
+console = Console()
 
 
 def main():
-    console = Console()
     options = get_options()
 
     initialize_db()
-    if not is_cache_fresh():
-        json_data = download_name_mapping_json()
-        populate_name_mapping_table(json_data)
+    freshly_downloaded = update_downloads()
+    if "name_mapping" in freshly_downloaded:
+        populate_name_mapping_table()
 
     canonical_names = CanonicalNames.from_options(options)
     console.print(canonical_names.pretty, highlight=False)
@@ -94,7 +105,7 @@ def get_options():
 def initialize_db():
     with con:
         con.execute(
-            "CREATE TABLE IF NOT EXISTS downloads(url TEXT, downloaded_at TEXT, json TEXT) STRICT"
+            "CREATE TABLE IF NOT EXISTS download(url TEXT, downloaded_at TEXT, content TEXT) STRICT"
         )
         con.execute(
             "CREATE TABLE IF NOT EXISTS name_mapping(conda_name TEXT, import_name TEXT, pypi_name TEXT) STRICT"
@@ -105,48 +116,48 @@ def initialize_db():
             )
 
 
-def is_cache_fresh() -> bool:
+def update_downloads() -> list[str]:
+    """Update the downloads table. Return a list of any stale entries."""
+    cutoff = datetime.datetime.now() - cache_lifetime
+    res = []
+    for name, request in downloads.items():
+        if (
+            con.execute(
+                "SELECT downloaded_at FROM download WHERE url = ? AND downloaded_at >= ? ORDER BY downloaded_at DESC LIMIT 1",
+                [request.url, cutoff],
+            ).fetchone()
+            is not None
+        ):
+            continue
+
+        console.print(f"Downloading {request.url}", end="", highlight=True)
+        resp = session.send(request)
+        resp.raise_for_status()
+        text_received = resp.content.decode()
+        console.print(": [green]OK[/green]", highlight=False)
+
+        with con:
+            con.execute("DELETE FROM download WHERE url = ?", [request.url])
+            con.execute(
+                "INSERT INTO download VALUES (?, ?, ?)",
+                [request.url, datetime.datetime.now().isoformat(), text_received],
+            )
+        res.append(name)
+    return res
+
+
+def populate_name_mapping_table():
     fetched = con.execute(
-        "SELECT downloaded_at FROM downloads WHERE url = ? ORDER BY downloaded_at DESC LIMIT 1",
-        [name_mapping_url],
+        "SELECT content FROM download WHERE url = ? ORDER BY downloaded_at DESC LIMIT 1",
+        [downloads["name_mapping"].url],
     ).fetchone()
-    if not fetched:
-        print("No cache of package name map file available")
-        return False
+    if fetched is None:
+        raise ValueError("Missing download")
 
-    downloaded_at = datetime.datetime.fromisoformat(fetched[0])
-    delta = datetime.datetime.now() - downloaded_at
-    if delta.seconds >= cache_lifetime_seconds:
-        print("Package name map file in cache, but outdated")
-        return False
-
-    print("Package name map file available in cache")
-    return True
-
-
-def download_name_mapping_json() -> str:
-    """Download the name mapping data as JSON and update the cache."""
-
-    print(f"Downloading {name_mapping_url} ...", end="")
-    resp = requests.get(name_mapping_url, headers={"Accept": "application/json"})
-    resp.raise_for_status()
-    json_data = resp.content.decode()
-    print(" ok")
-
-    with con:
-        con.execute("DELETE FROM downloads WHERE url = ?", [name_mapping_url])
-        con.execute(
-            "INSERT INTO downloads VALUES (?, ?, ?)",
-            [name_mapping_url, datetime.datetime.now().isoformat(), json_data],
-        )
-    return json_data
-
-
-def populate_name_mapping_table(json_data: str):
-    print("Populating database with data from name mapping")
+    console.print("Updating name mapping database", highlight=False)
     values = [
         (r["conda_name"], r["import_name"], r["pypi_name"])
-        for r in json.loads(json_data)
+        for r in json.loads(fetched[0])
     ]
     with con:
         con.execute("DELETE FROM name_mapping")
