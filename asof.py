@@ -1,24 +1,27 @@
 import argparse
 import datetime
 import json
+import re
 import sqlite3
 import subprocess
-from operator import itemgetter
+import warnings
+from collections import defaultdict
 from pathlib import Path
 from typing import NamedTuple
 from zoneinfo import ZoneInfo
 
 import requests
-import rich.progress
 from packaging.tags import sys_tags
 from packaging.utils import (
     InvalidSdistFilename,
     InvalidWheelFilename,
-    Version,
     parse_sdist_filename,
     parse_wheel_filename,
 )
+from packaging.version import VERSION_PATTERN, Version
 from rich.console import Console
+
+VERSION_PATTERN = re.compile(VERSION_PATTERN, re.VERBOSE | re.IGNORECASE)
 
 name_mapping_url = "https://github.com/regro/cf-graph-countyfair/raw/refs/heads/master/mappings/pypi/name_mapping.json"
 
@@ -44,8 +47,8 @@ def main():
         json_data = download_name_mapping_json()
         populate_name_mapping_table(json_data)
 
-    m = get_pypi(options.when, canonical_names.pypi_name)
-    console.print(m.pretty, highlight=False)
+    for m in get_pypi(options.when, canonical_names.pypi_name):
+        console.print(m.pretty, highlight=False)
 
     if conda_command := get_conda_command():
         get_conda(conda_command, options.when, canonical_names.conda_name)
@@ -205,7 +208,7 @@ class PackageMatch(NamedTuple):
         return f"[bold]{self.package_name}[/bold] [bold green]v{self.version!s}[/bold green] published [bold]{localized_date}[/bold] to [bold yellow]{self.source}[/bold yellow]"
 
 
-def get_pypi(when: datetime.datetime, package: str) -> PackageMatch | None:
+def get_pypi(when: datetime.datetime, package: str) -> list[PackageMatch]:
     resp = requests.get(
         f"{pypi_baseurl}/simple/{package}/",
         headers={"Accept": "application/vnd.pypi.simple.v1+json"},
@@ -215,55 +218,51 @@ def get_pypi(when: datetime.datetime, package: str) -> PackageMatch | None:
 
     file_objs = json.loads(json_data)["files"]
 
-    # Filter by date, return max by version number. Process in reverse order
-    # since the API tends to put the newest versions last, and thus this will
-    # reduce the number of reassignments made inside of max()
-    file_objs_filtered = []
-    for file_obj in rich.progress.track(reversed(file_objs), "PyPI versions"):
-        if file_obj["yanked"]:
-            continue
+    # To avoid having to parse every entry in full, start by grouping by version
+    # string (from the filename)
+    grouped = defaultdict(list)
+    for file_obj in file_objs:
+        if m := VERSION_PATTERN.search(file_obj["filename"]):
+            version_str = m.group(0)
+            grouped[version_str].append(file_obj)
+        else:
+            warnings.warn(f"Unable to parse version name {file_obj['filename']}")
 
-        dt = datetime.datetime.fromisoformat(file_obj["upload-time"])
-        if dt > when:
-            continue
+    # Now parse only these keys to Version objects and sort from highest to
+    # lowest. The API JSON tends to put newer versions toward the end, so the
+    # keys are probably *already* almost sorted, so it will be fastest to sort
+    # ascending and then reverse:
+    version_strs = sorted(grouped.keys(), key=Version)
+    version_strs.reverse()
 
-        version = is_compatible(file_obj)
-        if version is None:
-            continue
-        if version.is_prerelease:
-            continue
+    # Walk backwards through versions and return newest release version and
+    # newest prerelease (if available)
+    matches = []
+    for version_str in version_strs:
+        for file_obj in grouped[version_str]:
+            if file_obj["yanked"]:
+                continue
 
-        file_obj["upload-time-dt"] = dt
-        file_obj["version"] = version
-        file_objs_filtered.append(file_obj)
+            dt = datetime.datetime.fromisoformat(file_obj["upload-time"])
+            if dt > when:
+                continue
 
-    if best := max(file_objs_filtered, key=itemgetter("version"), default=None):
-        return PackageMatch(
-            package, best["version"], best["upload-time-dt"], pypi_baseurl
-        )
-    return None
+            version_obj = is_compatible(file_obj)
+            if version_obj is None:
+                continue
+            if version_obj.is_prerelease and matches:
+                # If we already have matches, then we already have a prerelease
+                # higher than this one
+                continue
 
+            m = PackageMatch(package, version_obj, dt, pypi_baseurl)
+            matches.append(m)
 
-def get_conda_command() -> str | None:
-    for command in "mamba conda".split():
-        try:
-            subprocess.run([command])
-            return command
-        except FileNotFoundError:
-            pass
+            if not version_obj.is_prerelease:
+                # Highest non-prerelease match found == done
+                return matches
 
-
-def get_conda(
-    conda_command: str, when: datetime.datetime, package: str
-) -> PackageMatch | None:
-    cmd = [conda_command, "search", "--json", package]
-    for channel in conda_channels:
-        cmd.extend(["--channel", channel])
-
-    res = subprocess.run(cmd, capture_output=True)
-    if res.statuscode != 0:
-        raise RuntimeError(res)
-    return res.stdout
+    return matches
 
 
 def is_compatible(file_obj: dict) -> Version | None:
@@ -290,6 +289,28 @@ def is_compatible(file_obj: dict) -> Version | None:
 
     # Could be an ancient .exe or other obsolete packaging format
     return None
+
+
+def get_conda_command() -> str | None:
+    for command in "mamba conda".split():
+        try:
+            subprocess.run([command])
+            return command
+        except FileNotFoundError:
+            pass
+
+
+def get_conda(
+    conda_command: str, when: datetime.datetime, package: str
+) -> PackageMatch | None:
+    cmd = [conda_command, "search", "--json", package]
+    for channel in conda_channels:
+        cmd.extend(["--channel", channel])
+
+    res = subprocess.run(cmd, capture_output=True)
+    if res.statuscode != 0:
+        raise RuntimeError(res)
+    return res.stdout
 
 
 if __name__ == "__main__":
