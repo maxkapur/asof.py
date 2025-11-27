@@ -39,11 +39,6 @@ downloads = {
         "https://github.com/regro/cf-graph-countyfair/raw/refs/heads/master/mappings/pypi/name_mapping.json",
         headers={"Accept": "application/json"},
     ).prepare(),
-    "anaconda_rss": requests.Request(
-        "GET",
-        "https://www.anaconda.com/docs/getting-started/anaconda/release-notes/rss.xml",
-        headers={"Accept": "application/xml"},
-    ).prepare(),
 }
 cache_lifetime = datetime.timedelta(days=1)
 
@@ -326,10 +321,6 @@ def get_conda(
     if res.statuscode != 0:
         raise RuntimeError(res)
     return res.stdout
-
-
-def get_anaconda():
-    pass  # TODO:
 
 
 if __name__ == "__main__":
