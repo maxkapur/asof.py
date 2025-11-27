@@ -2,6 +2,7 @@ import argparse
 import datetime
 import json
 import sqlite3
+import subprocess
 from operator import itemgetter
 from pathlib import Path
 from typing import NamedTuple
@@ -45,6 +46,9 @@ def main():
 
     m = get_pypi(options.when, canonical_names.pypi_name)
     console.print(m.pretty, highlight=False)
+
+    if conda_command := get_conda_command():
+        get_conda(conda_command, options.when, canonical_names.conda_name)
 
 
 def datetime_fromisoformat_here(s: str) -> datetime.datetime:
@@ -240,16 +244,26 @@ def get_pypi(when: datetime.datetime, package: str) -> PackageMatch | None:
     return None
 
 
-def get_conda(when: datetime.datetime, package: str) -> PackageMatch | None:
-    for channel in conda_channels:
-        resp = requests.get(
-            f"{conda_baseurl}/channels/{channel}/{package}/",
-            headers={"Accept": "application/json"},
-        )
-        resp.raise_for_status()
-        json_data = resp.content.decode()
+def get_conda_command() -> str | None:
+    for command in "mamba conda".split():
+        try:
+            subprocess.run([command])
+            return command
+        except FileNotFoundError:
+            pass
 
-        return json_data
+
+def get_conda(
+    conda_command: str, when: datetime.datetime, package: str
+) -> PackageMatch | None:
+    cmd = [conda_command, "search", "--json", package]
+    for channel in conda_channels:
+        cmd.extend(["--channel", channel])
+
+    res = subprocess.run(cmd, capture_output=True)
+    if res.statuscode != 0:
+        raise RuntimeError(res)
+    return res.stdout
 
 
 def is_compatible(file_obj: dict) -> Version | None:
