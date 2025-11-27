@@ -29,6 +29,10 @@ pypi_baseurl = "https://pypi.org"
 conda_baseurl = "https://api.anaconda.org"
 conda_channels = "defaults conda-forge".split()
 
+anaconda_rss_url = (
+    "https://www.anaconda.com/docs/getting-started/anaconda/release-notes/rss.xml"
+)
+
 con = sqlite3.connect(str(Path(__file__).parent / "cache.db"))
 
 cache_lifetime_seconds = 3600 * 24
@@ -38,14 +42,13 @@ def main():
     console = Console()
     options = get_options()
 
-    canonical_names = CanonicalNames.from_options(options)
-    console.print(canonical_names.pretty, highlight=False)
-
     initialize_db()
-
     if not is_cache_fresh():
         json_data = download_name_mapping_json()
         populate_name_mapping_table(json_data)
+
+    canonical_names = CanonicalNames.from_options(options)
+    console.print(canonical_names.pretty, highlight=False)
 
     for m in get_pypi(options.when, canonical_names.pypi_name):
         console.print(m.pretty, highlight=False)
@@ -91,7 +94,7 @@ def get_options():
 def initialize_db():
     with con:
         con.execute(
-            "CREATE TABLE IF NOT EXISTS name_mapping_raw(downloaded_at TEXT, json TEXT) STRICT"
+            "CREATE TABLE IF NOT EXISTS downloads(url TEXT, downloaded_at TEXT, json TEXT) STRICT"
         )
         con.execute(
             "CREATE TABLE IF NOT EXISTS name_mapping(conda_name TEXT, import_name TEXT, pypi_name TEXT) STRICT"
@@ -104,7 +107,8 @@ def initialize_db():
 
 def is_cache_fresh() -> bool:
     fetched = con.execute(
-        "SELECT downloaded_at FROM name_mapping_raw ORDER BY downloaded_at DESC LIMIT 1"
+        "SELECT downloaded_at FROM downloads WHERE url = ? ORDER BY downloaded_at DESC LIMIT 1",
+        [name_mapping_url],
     ).fetchone()
     if not fetched:
         print("No cache of package name map file available")
@@ -130,10 +134,10 @@ def download_name_mapping_json() -> str:
     print(" ok")
 
     with con:
-        con.execute("DELETE FROM name_mapping_raw")
+        con.execute("DELETE FROM downloads WHERE url = ?", [name_mapping_url])
         con.execute(
-            "INSERT INTO name_mapping_raw VALUES (?, ?)",
-            [datetime.datetime.now().isoformat(), json_data],
+            "INSERT INTO downloads VALUES (?, ?, ?)",
+            [name_mapping_url, datetime.datetime.now().isoformat(), json_data],
         )
     return json_data
 
@@ -311,6 +315,10 @@ def get_conda(
     if res.statuscode != 0:
         raise RuntimeError(res)
     return res.stdout
+
+
+def get_anaconda():
+    pass  # TODO:
 
 
 if __name__ == "__main__":
