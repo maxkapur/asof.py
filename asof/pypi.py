@@ -15,21 +15,24 @@ from packaging.utils import (
 from packaging.version import VERSION_PATTERN, Version
 
 import asof
-from asof.package_match import PackageMatch
+from asof.package_match import MatchesOption, PackageMatch
 
 VERSION_PATTERN = re.compile(VERSION_PATTERN, re.VERBOSE | re.IGNORECASE)
 
 
-def get_pypi(when: datetime.datetime, package: str) -> list[PackageMatch]:
+def get_pypi(when: datetime.datetime, package: str) -> MatchesOption:
+    url = f"{asof.pypi_baseurl}/simple/{package}/"
     resp = requests.get(
-        f"{asof.pypi_baseurl}/simple/{package}/",
+        url,
         headers={"Accept": "application/vnd.pypi.simple.v1+json"},
     )
-    if resp.status_code == 404:
-        return []
-    resp.raise_for_status()
-    json_data = resp.content.decode()
+    if not resp.ok:
+        return MatchesOption(
+            [],
+            f"{resp.status_code}: {resp.reason} when attempting to get query PyPI at {url}",
+        )
 
+    json_data = resp.content.decode()
     file_objs = json.loads(json_data)["files"]
 
     # To avoid having to parse every entry in full, start by grouping by version
@@ -51,32 +54,39 @@ def get_pypi(when: datetime.datetime, package: str) -> list[PackageMatch]:
 
     # Walk backwards through versions and return newest release version and
     # newest prerelease (if available)
-    matches = []
-    for version_str in version_strs:
-        for file_obj in grouped[version_str]:
-            if file_obj["yanked"]:
-                continue
+    def get_matches():
+        matches = []
+        for version_str in version_strs:
+            for file_obj in grouped[version_str]:
+                if file_obj["yanked"]:
+                    continue
 
-            dt = datetime.datetime.fromisoformat(file_obj["upload-time"])
-            if dt > when:
-                continue
+                dt = datetime.datetime.fromisoformat(file_obj["upload-time"])
+                if dt > when:
+                    continue
 
-            version_obj = is_compatible(file_obj)
-            if version_obj is None:
-                continue
-            if version_obj.is_prerelease and matches:
-                # If we already have matches, then we already have a prerelease
-                # higher than this one
-                continue
+                version_obj = is_compatible(file_obj)
+                if version_obj is None:
+                    continue
+                if version_obj.is_prerelease and matches:
+                    # If we already have matches, then we already have a prerelease
+                    # higher than this one
+                    continue
 
-            m = PackageMatch(package, version_obj, dt, asof.pypi_baseurl)
-            matches.append(m)
+                m = PackageMatch(package, version_obj, dt, asof.pypi_baseurl)
+                matches.append(m)
 
-            if not version_obj.is_prerelease:
-                # Highest non-prerelease match found == done
-                return matches
+                if not version_obj.is_prerelease:
+                    # Highest non-prerelease match found == done
+                    return matches
 
-    return matches
+    if matches := get_matches():
+        return MatchesOption(matches, None)
+    else:
+        return MatchesOption(
+            [],
+            f"No compatible releases or prereleases on PyPI as of {when.isoformat()} for package {package}",
+        )
 
 
 def is_compatible(file_obj: dict) -> Version | None:

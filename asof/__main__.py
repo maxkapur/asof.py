@@ -24,11 +24,7 @@ def main():
     console.print(f"Query: [bold]{options.query}[/bold]", highlight=False)
     console.print(canonical_names.pretty, highlight=False)
 
-    if matches := get_pypi(options.when, canonical_names.pypi_name):
-        for m in matches:
-            console.print(m.pretty, highlight=False)
-    else:
-        console.print("[gray]No matches from PyPI[/gray]")
+    get_pypi(options.when, canonical_names.pypi_name).log(console)
 
     # if conda_command := get_conda_command():
     #     console.print(
