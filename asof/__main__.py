@@ -4,6 +4,7 @@ import datetime
 from rich.console import Console
 
 import asof
+import asof.conda
 import asof.db
 from asof.canonical_names import CanonicalNames
 from asof.conda import get_conda as get_conda
@@ -25,10 +26,8 @@ def main():
 
     get_pypi(options.when, canonical_names.pypi_name).log(console)
 
-    # if conda_command := get_conda_command():
-    #     console.print(
-    #         get_conda(conda_command, options.when, canonical_names.conda_name)
-    #     )
+    if conda_command := asof.conda.get_conda_command():
+        get_conda(conda_command, options.when, canonical_names.pypi_name).log(console)
 
 
 def datetime_fromisoformat_here(s: str) -> datetime.datetime:

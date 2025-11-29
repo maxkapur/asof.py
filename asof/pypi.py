@@ -72,8 +72,8 @@ def get_pypi(when: datetime.datetime, package: str) -> MatchesOption:
                 if version_obj is None:
                     continue
                 if version_obj.is_prerelease and matches:
-                    # If we already have matches, then we already have a prerelease
-                    # higher than this one
+                    # If we already have matches, then we already have a
+                    # prerelease higher than this one
                     continue
 
                 m = PackageMatch(package, version_obj, dt, asof.pypi_baseurl)
