@@ -310,11 +310,11 @@ def is_compatible(file_obj: dict) -> Version | None:
 def get_conda_command() -> str | None:
     for command in "mamba conda".split():
         try:
-            subprocess.run([command])
+            subprocess.run([command], capture_output=True)
             return command
         except FileNotFoundError:
             pass
-
+    return None
 
 def get_conda(
     conda_command: str, when: datetime.datetime, package: str
