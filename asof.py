@@ -8,7 +8,6 @@ import warnings
 from collections import defaultdict
 from pathlib import Path
 from typing import NamedTuple
-from zoneinfo import ZoneInfo
 
 import requests
 from packaging.tags import sys_tags
@@ -71,7 +70,8 @@ def datetime_fromisoformat_here(s: str) -> datetime.datetime:
     """Parse datetime from ISO format; add current timezone if not present."""
     dt = datetime.datetime.fromisoformat(s)
     if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=ZoneInfo("localtime"))
+        tzinfo = datetime.datetime.now().astimezone().tzinfo
+        dt = dt.replace(tzinfo=tzinfo)
     return dt
 
 
