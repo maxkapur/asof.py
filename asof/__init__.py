@@ -22,6 +22,9 @@ from rich.console import Console
 
 VERSION_PATTERN = re.compile(VERSION_PATTERN, re.VERBOSE | re.IGNORECASE)
 
+repo_root = Path(__file__).parent.parent
+assert (repo_root / "pyproject.toml").is_file()
+
 session = requests.Session()
 
 
@@ -29,7 +32,7 @@ pypi_baseurl = "https://pypi.org"
 conda_baseurl = "https://api.anaconda.org"
 conda_channels = "defaults conda-forge".split()
 
-con = sqlite3.connect(str(Path(__file__).parent / "cache.db"))
+con = sqlite3.connect(str(repo_root / "cache.db"))
 
 
 downloads = {
