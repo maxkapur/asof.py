@@ -34,7 +34,7 @@ Repository = "https://github.com/maxkapur/asof.py.git"
 "Bug Tracker" = "https://github.com/maxkapur/asof.py/issues"
 
 [project.scripts]
-asof = "asof:main"
+asof = "asof.__main__:main"
 
 [tool.ruff.lint]
 extend-select = ["I"]
