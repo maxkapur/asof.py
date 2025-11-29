@@ -12,12 +12,15 @@ from packaging.utils import (
     parse_sdist_filename,
     parse_wheel_filename,
 )
-from packaging.version import VERSION_PATTERN, Version
+from packaging.version import Version
+from packaging.version import version_pattern as version_pattern_str
 
 import asof
 from asof.package_match import MatchesOption, PackageMatch
 
-VERSION_PATTERN = re.compile(VERSION_PATTERN, re.VERBOSE | re.IGNORECASE)
+version_pattern: re.Pattern = re.compile(
+    version_pattern_str, re.VERBOSE | re.IGNORECASE
+)
 
 
 def get_pypi(when: datetime.datetime, package: str) -> MatchesOption:
@@ -39,7 +42,7 @@ def get_pypi(when: datetime.datetime, package: str) -> MatchesOption:
     # string (from the filename)
     grouped = defaultdict(list)
     for file_obj in file_objs:
-        if m := VERSION_PATTERN.search(file_obj["filename"]):
+        if m := version_pattern.search(file_obj["filename"]):
             version_str = m.group(0)
             grouped[version_str].append(file_obj)
         else:

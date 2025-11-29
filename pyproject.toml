@@ -24,7 +24,9 @@ license-files = ["LICEN[CS]E.*"]
 
 [project.optional-dependencies]
 dev = [
+  "mypy",
   "ruff",
+  "types-requests",
 ]
 
 [project.urls]
@@ -38,3 +40,6 @@ asof = "asof.__main__:main"
 
 [tool.ruff.lint]
 extend-select = ["I"]
+
+[tool.mypy]
+modules = ["asof"]

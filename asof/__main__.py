@@ -9,16 +9,15 @@ from asof.canonical_names import CanonicalNames
 from asof.conda import get_conda as get_conda
 from asof.pypi import get_pypi as get_pypi
 
-console = Console()
-
 
 def main():
+    console = Console()
     options = get_options()
 
     asof.db.initialize_db()
-    freshly_downloaded = asof.db.update_downloads()
+    freshly_downloaded = asof.db.update_downloads(console)
     if "name_mapping" in freshly_downloaded:
-        asof.db.populate_name_mapping_table()
+        asof.db.populate_name_mapping_table(console)
 
     canonical_names = CanonicalNames.from_options(options)
     console.print(f"Query: [bold]{options.query}[/bold]", highlight=False)

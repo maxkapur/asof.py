@@ -3,6 +3,7 @@ import json
 import sqlite3
 
 import requests
+from rich.console import Console
 
 import asof
 from asof import cache_path
@@ -26,7 +27,7 @@ def initialize_db():
             )
 
 
-def update_downloads() -> list[str]:
+def update_downloads(console: Console) -> list[str]:
     """Update the downloads table. Return a list of any stale entries."""
     cutoff = datetime.datetime.now() - asof.cache_lifetime
     res = []
@@ -40,11 +41,11 @@ def update_downloads() -> list[str]:
         ):
             continue
 
-        asof.console.print(f"Downloading {request.url}", end="", highlight=True)
+        console.print(f"Downloading {request.url}", end="", highlight=True)
         resp = session.send(request)
         resp.raise_for_status()
         text_received = resp.content.decode()
-        asof.console.print(": [green]OK[/green]", highlight=False)
+        console.print(": [green]OK[/green]", highlight=False)
 
         with con:
             con.execute("DELETE FROM download WHERE url = ?", [request.url])
@@ -56,7 +57,7 @@ def update_downloads() -> list[str]:
     return res
 
 
-def populate_name_mapping_table():
+def populate_name_mapping_table(console: Console):
     fetched = con.execute(
         "SELECT content FROM download WHERE url = ? ORDER BY downloaded_at DESC LIMIT 1",
         [asof.downloads["name_mapping"].url],
@@ -64,7 +65,7 @@ def populate_name_mapping_table():
     if fetched is None:
         raise ValueError("Missing download")
 
-    asof.console.print("Updating name mapping database", highlight=False)
+    console.print("Updating name mapping database", highlight=False)
     values = [
         (r["conda_name"], r["import_name"], r["pypi_name"])
         for r in json.loads(fetched[0])
