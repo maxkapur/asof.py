@@ -63,7 +63,9 @@ def main():
         console.print("[gray]No matches from PyPI[/gray]")
 
     if conda_command := get_conda_command():
-        get_conda(conda_command, options.when, canonical_names.conda_name)
+        console.print(
+            get_conda(conda_command, options.when, canonical_names.conda_name)
+        )
 
 
 def datetime_fromisoformat_here(s: str) -> datetime.datetime:
@@ -316,6 +318,7 @@ def get_conda_command() -> str | None:
             pass
     return None
 
+
 def get_conda(
     conda_command: str, when: datetime.datetime, package: str
 ) -> PackageMatch | None:
@@ -324,9 +327,13 @@ def get_conda(
         cmd.extend(["--channel", channel])
 
     res = subprocess.run(cmd, capture_output=True)
-    if res.statuscode != 0:
-        raise RuntimeError(res)
-    return res.stdout
+    if res.returncode != 0:
+        # TODO: Helpful message
+        return None
+
+    # TODO: Parse
+    parsed = json.loads(res.stdout.decode())
+    return parsed
 
 
 if __name__ == "__main__":
