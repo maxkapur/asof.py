@@ -25,6 +25,9 @@ license-files = ["LICEN[CS]E.*"]
 [project.optional-dependencies]
 dev = [
   "mypy",
+  "pytest",
+  "pytest-mypy",
+  "pytest-ruff",
   "ruff",
   "types-requests",
 ]
@@ -41,5 +44,12 @@ asof = "asof.__main__:main"
 [tool.ruff.lint]
 extend-select = ["I"]
 
+[tool.pytest]
+addopts = [
+  "--mypy",
+  "--ruff-format",
+  "--ruff",
+]
+
 [tool.mypy]
-modules = ["asof"]
+packages = ["asof", "test"]
