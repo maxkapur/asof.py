@@ -21,7 +21,7 @@ def main():
     console.print(canonical_names.pretty, highlight=False)
 
     get_pypi(options.when, canonical_names.pypi_name).log(console)
-    get_conda(options.when, canonical_names.pypi_name).log(console)
+    get_conda(options.when, canonical_names.conda_name).log(console)
 
 
 def datetime_fromisoformat_here(s: str) -> datetime.datetime:
