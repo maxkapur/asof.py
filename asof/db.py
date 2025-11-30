@@ -49,7 +49,7 @@ def update_downloads(con: sqlite3.Connection, console: Console) -> list[str]:
         if (
             con.execute(
                 "SELECT downloaded_at FROM download WHERE url = ? AND downloaded_at >= ? ORDER BY downloaded_at DESC LIMIT 1",
-                [request.url, cutoff],
+                [request.url, cutoff.isoformat()],
             ).fetchone()
             is not None
         ):
