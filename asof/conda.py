@@ -1,6 +1,7 @@
 import datetime
 import json
 import re
+import shlex
 import subprocess
 import warnings
 from collections import defaultdict
@@ -8,6 +9,7 @@ from typing import Literal
 
 from packaging.version import Version
 from packaging.version import version_pattern as version_pattern_str
+from rich.status import Status
 
 from asof.package_match import MatchesOption, PackageMatch
 
@@ -20,17 +22,20 @@ CondaCommand = Literal["mamba", "conda"]
 
 def get_conda_command() -> CondaCommand | None:
     """Guess the user's preferred conda command as mamba, conda, or None."""
-    command: CondaCommand
-    for command in "mamba", "conda":
-        try:
-            subprocess.run([command], capture_output=True)
-            return command
-        except FileNotFoundError:
-            pass
-    return None
+    with Status("Determining conda command"):
+        for command in "mamba", "conda":
+            try:
+                subprocess.run([command], capture_output=True)
+                return command
+            except FileNotFoundError:
+                pass
+        return None
 
 
-def extract_file_objs(conda_command: CondaCommand, parsed_json: dict) -> list[dict]:
+def extract_file_objs(
+    conda_command: CondaCommand,
+    parsed_json: dict,
+) -> list[dict]:
     """Extract the list of package matches from the JSON response.
 
     Necessary because the mamba and conda commands format their JSON slightly
@@ -47,7 +52,10 @@ def extract_file_objs(conda_command: CondaCommand, parsed_json: dict) -> list[di
             raise ValueError
 
 
-def timestamp_to_datetime(conda_command: CondaCommand, timestamp: int) -> list[dict]:
+def timestamp_to_datetime(
+    conda_command: CondaCommand,
+    timestamp: int,
+) -> datetime.datetime:
     """Convert the timestamp (integer) to a Python datetime.
 
     Mamba uses seconds since Unix epoch, while conda uses milliseconds.
@@ -69,7 +77,7 @@ def get_conda(
     package: str,
     conda_command: CondaCommand | None = get_conda_command(),
 ) -> MatchesOption:
-    if conda_command is None:
+    if conda_command is None:  # still
         return MatchesOption(
             [],
             "Unable to query conda repos as neither conda nor mamba command available",
@@ -85,7 +93,8 @@ def get_conda(
         # Disable retrying search for "*<package>*"; only conda has this feature
         cmd.append("--skip-flexible-search")
 
-    res = subprocess.run(cmd, capture_output=True)
+    with Status(f"Querying conda repo: {shlex.join(cmd)}"):
+        res = subprocess.run(cmd, capture_output=True)
 
     no_matches_msg = f"No matches for {package} available from requested conda channels"
     if res.returncode != 0:

@@ -14,6 +14,7 @@ from packaging.utils import (
 )
 from packaging.version import Version
 from packaging.version import version_pattern as version_pattern_str
+from rich.status import Status
 
 import asof
 from asof.package_match import MatchesOption, PackageMatch
@@ -25,10 +26,11 @@ version_pattern: re.Pattern = re.compile(
 
 def get_pypi(when: datetime.datetime, package: str) -> MatchesOption:
     url = f"{asof.pypi_baseurl}/simple/{package}/"
-    resp = requests.get(
-        url,
-        headers={"Accept": "application/vnd.pypi.simple.v1+json"},
-    )
+    with Status(f"Querying PyPI at {url}"):
+        resp = requests.get(
+            url,
+            headers={"Accept": "application/vnd.pypi.simple.v1+json"},
+        )
     if not resp.ok:
         return MatchesOption(
             [],
