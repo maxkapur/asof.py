@@ -30,7 +30,7 @@ def get_conda_command() -> CondaCommand | None:
     return None
 
 
-def get_file_objs(conda_command: CondaCommand, parsed_json: dict) -> list[dict]:
+def extract_file_objs(conda_command: CondaCommand, parsed_json: dict) -> list[dict]:
     """Extract the list of package matches from the JSON response.
 
     Necessary because the mamba and conda commands format their JSON slightly
@@ -45,6 +45,23 @@ def get_file_objs(conda_command: CondaCommand, parsed_json: dict) -> list[dict]:
             return res
         case _:
             raise ValueError
+
+
+def timestamp_to_datetime(conda_command: CondaCommand, timestamp: int) -> list[dict]:
+    """Convert the timestamp (integer) to a Python datetime.
+
+    Mamba uses seconds since Unix epoch, while conda uses milliseconds.
+    """
+    match conda_command:
+        case "mamba":
+            dt = datetime.datetime.fromtimestamp(timestamp)
+        case "conda":
+            dt = datetime.datetime.fromtimestamp(timestamp / 1000)
+        case _:
+            raise ValueError
+
+    # Need to add timezone info to compute difference with "now"
+    return dt.replace(tzinfo=datetime.timezone.utc)
 
 
 def get_conda(
@@ -83,7 +100,7 @@ def get_conda(
             )
 
     parsed = json.loads(res.stdout.decode())
-    file_objs = get_file_objs(conda_command, parsed)
+    file_objs = extract_file_objs(conda_command, parsed)
 
     # To avoid having to parse every entry in full, start by grouping by version
     # string (from the filename)
@@ -106,11 +123,9 @@ def get_conda(
         matches = []
         for version_str in version_strs:
             for file_obj in grouped[version_str]:
-                # Timestamp is integer milliseconds since Unix epoch. Ancient
-                # results have no timestamp, just assume they are old :)
-                timestamp = file_obj.get("timestamp", 0) / 1000
-                dt = datetime.datetime.fromtimestamp(timestamp)
-                dt = dt.replace(tzinfo=datetime.timezone.utc)
+                # Ancient results have no timestamp, just assume they are old :)
+                timestamp = file_obj.get("timestamp", 0)
+                dt = timestamp_to_datetime(conda_command, timestamp)
                 if dt > when:
                     continue
 
