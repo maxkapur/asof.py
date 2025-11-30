@@ -2,6 +2,7 @@ from argparse import Namespace
 from typing import Iterator, NamedTuple
 
 import pytest
+from rich.console import Console
 
 from asof.canonical_names import CanonicalNames
 
@@ -10,6 +11,9 @@ class Triple(NamedTuple):
     conda_name: str
     import_name: str
     pypi_name: str
+
+
+console = Console()
 
 
 @pytest.fixture(
@@ -40,19 +44,19 @@ def triple(request: pytest.FixtureRequest) -> Iterator[Triple]:
 
 
 def test_from_conda_name(triple: Triple):
-    names = CanonicalNames.from_conda_name(triple.conda_name)
+    names = CanonicalNames.from_conda_name(triple.conda_name, console)
     assert names.pypi_name == triple.pypi_name
     assert names.conda_name == triple.conda_name
 
 
 def test_from_pypi_name(triple: Triple):
-    names = CanonicalNames.from_pypi_name(triple.pypi_name)
+    names = CanonicalNames.from_pypi_name(triple.pypi_name, console)
     assert names.pypi_name == triple.pypi_name
     assert names.conda_name == triple.conda_name
 
 
 def test_from_import_name(triple: Triple):
-    names = CanonicalNames.from_import_name(triple.import_name)
+    names = CanonicalNames.from_import_name(triple.import_name, console)
     assert names.pypi_name == triple.pypi_name
     assert names.conda_name == triple.conda_name
 
@@ -62,7 +66,7 @@ def test_from_import_name(triple: Triple):
 
 def test_from_options__conda_name(triple: Triple):
     options = Namespace(query=triple.conda_name, query_type="conda")
-    names = CanonicalNames.from_options(options)
+    names = CanonicalNames.from_options(options, console)
     assert names.pypi_name == triple.pypi_name
     assert names.conda_name == triple.conda_name
 
@@ -70,13 +74,13 @@ def test_from_options__conda_name(triple: Triple):
 def test_from_options__pypi_name(triple: Triple):
     # NOTE: PyPI is capitalized during options parsing; shouldn't matter
     options = Namespace(query=triple.pypi_name, query_type="PyPI")
-    names = CanonicalNames.from_options(options)
+    names = CanonicalNames.from_options(options, console)
     assert names.pypi_name == triple.pypi_name
     assert names.conda_name == triple.conda_name
 
 
 def test_from_options__import_name(triple: Triple):
     options = Namespace(query=triple.import_name, query_type="import")
-    names = CanonicalNames.from_options(options)
+    names = CanonicalNames.from_options(options, console)
     assert names.pypi_name == triple.pypi_name
     assert names.conda_name == triple.conda_name

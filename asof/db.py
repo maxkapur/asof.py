@@ -1,19 +1,33 @@
 import datetime
 import json
 import sqlite3
+from functools import cache
 
 import requests
 from rich.console import Console
 
 import asof
-from asof import cache_path
 
 session = requests.Session()
 
-con = sqlite3.connect(str(cache_path))
+
+@cache
+def get_con(console: Console) -> sqlite3.Connection:
+    """Get a connection to the SQLite database.
+
+    Ensure proper initialization.
+    """
+    con = sqlite3.connect(str(asof.cache_path))
+
+    initialize_tables(con)
+    freshly_downloaded = update_downloads(con, console)
+    if "name_mapping" in freshly_downloaded:
+        asof.db.populate_name_mapping_table(con, console)
+
+    return con
 
 
-def initialize_db():
+def initialize_tables(con: sqlite3.Connection):
     with con:
         con.execute(
             "CREATE TABLE IF NOT EXISTS download(url TEXT, downloaded_at TEXT, content TEXT) STRICT"
@@ -27,7 +41,7 @@ def initialize_db():
             )
 
 
-def update_downloads(console: Console) -> list[str]:
+def update_downloads(con: sqlite3.Connection, console: Console) -> list[str]:
     """Update the downloads table. Return a list of any stale entries."""
     cutoff = datetime.datetime.now() - asof.cache_lifetime
     res = []
@@ -57,7 +71,7 @@ def update_downloads(console: Console) -> list[str]:
     return res
 
 
-def populate_name_mapping_table(console: Console):
+def populate_name_mapping_table(con: sqlite3.Connection, console: Console):
     fetched = con.execute(
         "SELECT content FROM download WHERE url = ? ORDER BY downloaded_at DESC LIMIT 1",
         [asof.downloads["name_mapping"].url],
