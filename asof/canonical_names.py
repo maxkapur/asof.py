@@ -48,4 +48,4 @@ class CanonicalNames(NamedTuple):
 
     @classmethod
     def from_options(cls, options: argparse.Namespace) -> "CanonicalNames":
-        return getattr(cls, f"from_{options.query_type}_name")(options.query)
+        return getattr(cls, f"from_{options.query_type.lower()}_name")(options.query)

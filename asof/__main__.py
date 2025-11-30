@@ -1,5 +1,6 @@
 import argparse
 import datetime
+from typing import Literal
 
 from rich.console import Console
 
@@ -21,11 +22,13 @@ def main():
         asof.db.populate_name_mapping_table(console)
 
     canonical_names = CanonicalNames.from_options(options)
-    console.print(f"Query: [bold]{options.query}[/bold]", highlight=False)
+    console.print(
+        f"Query: [bold]{options.query}[/bold] [gray]({options.query_type} name)[/gray]",
+        highlight=False,
+    )
     console.print(canonical_names.pretty, highlight=False)
 
     get_pypi(options.when, canonical_names.pypi_name).log(console)
-
     get_conda(options.when, canonical_names.pypi_name).log(console)
 
 
@@ -38,7 +41,7 @@ def datetime_fromisoformat_here(s: str) -> datetime.datetime:
     return dt
 
 
-def get_parser():
+def get_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="asof.py")
     parser.add_argument(
         "when",
@@ -49,19 +52,34 @@ def get_parser():
         "query",
         help='Package name (or import name, if query type is "import") to search for latest version.',
     )
-
     parser.add_argument(
         "--query-type",
         help='Type of query (default: "pypi"). For example, "pypi" matches packages based on the name registered in PyPI. Many, but not all, packages have identical names for the imported module, PyPI package, and conda package.',
         nargs="?",
         choices=["conda", "import", "pypi"],
         default="pypi",
+        type=as_query_type,
     )
     return parser
 
 
-def get_options():
+def get_options() -> argparse.Namespace:
     return get_parser().parse_args()
+
+
+QueryType = Literal["conda", "PyPI", "import"]
+
+
+def as_query_type(maybe_query_type: str) -> QueryType:
+    match maybe_query_type.lower():
+        case "conda":
+            return "conda"
+        case "pypi":
+            return "PyPI"
+        case "import":
+            return "import"
+        case _:
+            raise ValueError
 
 
 if __name__ == "__main__":
