@@ -12,8 +12,8 @@ from packaging.utils import (
     parse_sdist_filename,
     parse_wheel_filename,
 )
+from packaging.version import VERSION_PATTERN as version_pattern_str
 from packaging.version import Version
-from packaging.version import version_pattern as version_pattern_str
 from rich.status import Status
 
 import asof

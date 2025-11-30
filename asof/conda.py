@@ -7,8 +7,8 @@ import warnings
 from collections import defaultdict
 from typing import Literal
 
+from packaging.version import VERSION_PATTERN as version_pattern_str
 from packaging.version import Version
-from packaging.version import version_pattern as version_pattern_str
 from rich.status import Status
 
 from asof.package_match import MatchesOption, PackageMatch
