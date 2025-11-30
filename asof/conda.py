@@ -9,7 +9,6 @@ from typing import Literal
 from packaging.version import Version
 from packaging.version import version_pattern as version_pattern_str
 
-import asof
 from asof.package_match import MatchesOption, PackageMatch
 
 version_pattern: re.Pattern = re.compile(
@@ -64,15 +63,10 @@ def get_conda(
         "search",
         "--json",
         package,
-        "--override-channels",  # Use only explicitly named channels
     ]
     if conda_command == "conda":
         # Disable retrying search for "*<package>*"; only conda has this feature
         cmd.append("--skip-flexible-search")
-    for channel in asof.conda_channels:
-        # TODO: Do we actually want this? Or should we just let conda handle the
-        # channel config to avoid having to maintain another setting
-        cmd.extend(["--channel", channel])
 
     res = subprocess.run(cmd, capture_output=True)
 

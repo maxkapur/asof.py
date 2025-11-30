@@ -11,8 +11,6 @@ assert (repo_root / "pyproject.toml").is_file()
 
 # TODO: Below should be a standalone config file
 pypi_baseurl = "https://pypi.org"
-conda_baseurl = "https://api.anaconda.org"
-conda_channels = "defaults conda-forge".split()
 
 downloads = {
     "name_mapping": requests.Request(
