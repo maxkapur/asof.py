@@ -4,6 +4,7 @@ import re
 import subprocess
 import warnings
 from collections import defaultdict
+from typing import Literal
 
 from packaging.version import Version
 from packaging.version import version_pattern as version_pattern_str
@@ -15,9 +16,13 @@ version_pattern: re.Pattern = re.compile(
     version_pattern_str, re.VERBOSE | re.IGNORECASE
 )
 
+CondaCommand = Literal["mamba", "conda"]
 
-def get_conda_command() -> str | None:
-    for command in "mamba conda".split():
+
+def get_conda_command() -> CondaCommand | None:
+    """Guess the user's preferred conda command as mamba, conda, or None."""
+    command: CondaCommand
+    for command in "mamba", "conda":
         try:
             subprocess.run([command], capture_output=True)
             return command
@@ -26,9 +31,34 @@ def get_conda_command() -> str | None:
     return None
 
 
+def get_file_objs(conda_command: CondaCommand, parsed_json: dict) -> list[dict]:
+    """Extract the list of package matches from the JSON response.
+
+    Necessary because the mamba and conda commands format their JSON slightly
+    differently.
+    """
+    match conda_command:
+        case "mamba":
+            return parsed_json["result"]["pkgs"]
+        case "conda":
+            # JSON has just one key, which is the package name requested
+            _, res = parsed_json.popitem()
+            return res
+        case _:
+            raise ValueError
+
+
 def get_conda(
-    conda_command: str, when: datetime.datetime, package: str
+    when: datetime.datetime,
+    package: str,
+    conda_command: CondaCommand | None = get_conda_command(),
 ) -> MatchesOption:
+    if conda_command is None:
+        return MatchesOption(
+            [],
+            "Unable to query conda repos as neither conda nor mamba command available",
+        )
+
     cmd = [
         conda_command,
         "search",
@@ -37,9 +67,8 @@ def get_conda(
         "--override-channels",  # Use only explicitly named channels
     ]
     if conda_command == "conda":
-        cmd.append(
-            "--skip-flexible-search"
-        )  # Disable retrying search for "*<package>*"
+        # Disable retrying search for "*<package>*"; only conda has this feature
+        cmd.append("--skip-flexible-search")
     for channel in asof.conda_channels:
         # TODO: Do we actually want this? Or should we just let conda handle the
         # channel config to avoid having to maintain another setting
@@ -60,11 +89,7 @@ def get_conda(
             )
 
     parsed = json.loads(res.stdout.decode())
-    _, file_objs = parsed.popitem()
-
-    if "pkgs" in file_objs:
-        # Seems to be a conda vs. mamba difference
-        file_objs = file_objs["pkgs"]
+    file_objs = get_file_objs(conda_command, parsed)
 
     # To avoid having to parse every entry in full, start by grouping by version
     # string (from the filename)
@@ -82,9 +107,6 @@ def get_conda(
     # ascending and then reverse:
     version_strs = sorted(grouped.keys(), key=Version)
     version_strs.reverse()
-
-    # TODO: Lot of discrepancies between JSON returned by mamba vs. conda, need
-    # to create separate functions.
 
     def get_matches():
         matches = []

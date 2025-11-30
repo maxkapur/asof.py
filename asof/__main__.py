@@ -26,8 +26,7 @@ def main():
 
     get_pypi(options.when, canonical_names.pypi_name).log(console)
 
-    if conda_command := asof.conda.get_conda_command():
-        get_conda(conda_command, options.when, canonical_names.pypi_name).log(console)
+    get_conda(options.when, canonical_names.pypi_name).log(console)
 
 
 def datetime_fromisoformat_here(s: str) -> datetime.datetime:
