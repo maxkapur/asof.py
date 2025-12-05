@@ -22,7 +22,6 @@ console = Console()
         # pypi_name LIKE import_name OR import_name LIKE conda_name);
         # There are about 200 such pairs, mostly aws-cdk stuff; this is just a
         # subset of those that seem recognizable
-        "analytics-python|segment|segment-analytics-python",
         "arm_pyart|pyart|arm-pyart",
         "backports.zoneinfo|zoneinfo|backports-zoneinfo",
         "boolean.py|boolean|boolean-py",
