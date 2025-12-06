@@ -47,5 +47,5 @@ def test_get_pypi__empty(when: datetime.datetime, package: str):
     assert res.matches == []
     assert res.message is not None
     assert re.match(
-        "No matches for .* available from requested conda channels", res.message
+        f"No matches for {package} available from requested conda channels", res.message
     )

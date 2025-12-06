@@ -1,4 +1,5 @@
 import datetime
+import re
 
 import pytest
 from packaging.version import Version
@@ -45,4 +46,7 @@ def test_get_pypi__empty(when: datetime.datetime, package: str):
     res = get_pypi(when, package)
     assert res.matches == []
     assert res.message is not None
-    assert res.message.startswith("404: Not Found")
+    assert re.match(
+        f"404: Not Found when attempting to get query PyPI at .*/{package}/",
+        res.message,
+    )
