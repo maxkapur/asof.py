@@ -39,7 +39,6 @@ def test_get_conda__conda__ok(
     when: datetime.datetime,
     package: str,
     expected_matches: list[PackageMatch],
-    monkeypatch: pytest.MonkeyPatch,
 ):
     res = get_conda(when, package, conda_command="conda")
     assert res.matches == expected_matches
@@ -90,7 +89,6 @@ def test_get_conda__mamba__ok(
     when: datetime.datetime,
     package: str,
     expected_matches: list[PackageMatch],
-    monkeypatch: pytest.MonkeyPatch,
 ):
     res = get_conda(when, package, conda_command="mamba")
     assert res.matches == expected_matches
