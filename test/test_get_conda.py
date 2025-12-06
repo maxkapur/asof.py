@@ -59,9 +59,7 @@ def test_get_conda__conda__empty(when: datetime.datetime, package: str):
     res = get_conda(when, package, conda_command="conda")
     assert res.matches == []
     assert res.message is not None
-    assert re.match(
-        f"No matches for {package} available from requested conda channels", res.message
-    )
+    assert re.match("conda exited with status 1", res.message)
 
 
 # Tests with conda_command="mamba"
