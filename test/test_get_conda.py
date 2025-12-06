@@ -26,7 +26,7 @@ MAMBA_INSTALLED = get_conda_command() == "mamba"
                     Version("v1.4.1"),
                     # NOTE: conda JSON returns down to milliseconds, whereas
                     # mamba just does seconds
-                    datetime.datetime.fromisoformat("2022-02-12T06:52:53.028000+00:00"),
+                    datetime.datetime.fromisoformat("2022-02-12T12:52:53.028000+00:00"),
                     # NOTE: conda JSON returns a URL like this, whereas mamba
                     # returns just the channel name "conda-forge"
                     "https://conda.anaconda.org/conda-forge/linux-64",
@@ -78,7 +78,7 @@ def test_get_conda__conda__empty(when: datetime.datetime, package: str):
                 PackageMatch(
                     "pandas",
                     Version("v1.4.1"),
-                    datetime.datetime.fromisoformat("2022-02-12T06:52:53+00:00"),
+                    datetime.datetime.fromisoformat("2022-02-12T12:52:53+00:00"),
                     "conda-forge",
                 )
             ],
