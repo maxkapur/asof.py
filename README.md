@@ -38,6 +38,13 @@ web.py v0.40 published Sun 09/29/19 15:30:21 to conda-forge
 
 There are colors in the terminal output, but I can't show them here :)
 
+## Motivation
+
+I use this to pin dependencies for new projects to the latest versions available
+under a
+[dependency cooldown](https://blog.yossarian.net/2025/11/21/We-should-all-be-using-dependency-cooldowns)
+rule.
+
 ## Installation
 
 Easy way:
