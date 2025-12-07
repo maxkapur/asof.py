@@ -17,6 +17,7 @@ def get_con(console: Console) -> sqlite3.Connection:
 
     Ensure proper initialization.
     """
+    asof.cache_path.parent.mkdir(parents=True, exist_ok=True)
     con = sqlite3.connect(str(asof.cache_path))
 
     initialize_tables(con)
