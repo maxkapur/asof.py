@@ -1,17 +1,13 @@
 import datetime
-from pathlib import Path
 
 import requests
+from platformdirs import user_cache_path
 
 from asof.conda import get_conda as get_conda
 from asof.pypi import get_pypi as get_pypi
 
-repo_root = Path(__file__).parent.parent
-assert (repo_root / "pyproject.toml").is_file()
-
 # TODO: Below should be a standalone config file
 pypi_baseurl = "https://pypi.org"
-
 downloads = {
     "name_mapping": requests.Request(
         "GET",
@@ -19,5 +15,5 @@ downloads = {
         headers={"Accept": "application/json"},
     ).prepare(),
 }
-cache_path = repo_root / "cache.db"
+cache_path = user_cache_path() / "python-asof" / "cache.db"
 cache_lifetime = datetime.timedelta(days=1)

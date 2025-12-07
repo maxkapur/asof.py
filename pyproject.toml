@@ -4,9 +4,10 @@ build-backend = "hatchling.build"
 
 [project]
 name = "asof"
-version = "0.1.0"
+version = "0.1.1a0"
 dependencies = [
   "packaging ~= 25.0",
+  "platformdirs ~= 4.5",
   "requests ~= 2.32",
   "rich ~= 14.0",
 ]
