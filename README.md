@@ -50,7 +50,7 @@ rule.
 Easy way:
 
 ```shell
-pipx install 'git+https://github.com/maxkapur/asof.py'
+pipx install asof
 ```
 
 For development:

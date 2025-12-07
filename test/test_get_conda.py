@@ -1,5 +1,6 @@
 import datetime
 import re
+import sys
 
 import pytest
 from packaging.version import Version
@@ -7,12 +8,14 @@ from packaging.version import Version
 from asof.conda import get_conda, get_conda_command
 from asof.package_match import PackageMatch
 
+LINUX = "linux" in sys.version
 CONDA_INSTALLED = get_conda_command() is not None
 MAMBA_INSTALLED = get_conda_command() == "mamba"
 
 # Tests with conda_command="conda"
 
 
+@pytest.mark.skipif(not LINUX, reason="expected versions are for Linux")
 @pytest.mark.skipif(not CONDA_INSTALLED, reason="conda not installed")
 @pytest.mark.parametrize(
     "when,package,expected_matches",
@@ -65,6 +68,7 @@ def test_get_conda__conda__empty(when: datetime.datetime, package: str):
 # Tests with conda_command="mamba"
 
 
+@pytest.mark.skipif(not LINUX, reason="expected versions are for Linux")
 @pytest.mark.skipif(not MAMBA_INSTALLED, reason="mamba not installed")
 @pytest.mark.parametrize(
     "when,package,expected_matches",
