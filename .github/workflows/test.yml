@@ -46,15 +46,14 @@ jobs:
         shell: bash -el {0}
         run: conda info
 
-      - name: Install dependencies
+      - name: Install module
         shell: bash -el {0}
-        run: |
-          python -m venv ./venv
-          source ./venv/bin/activate
-          python -m pip install --editable .[dev]
+        run: python -m pip install --editable .[dev]
+
+      - name: Pip list
+        shell: bash -el {0}
+        run: python -m pip list
 
       - name: Pytest
         shell: bash -el {0}
-        run: |
-          source ./venv/bin/activate
-          python -m pytest
+        run: python -m pytest
