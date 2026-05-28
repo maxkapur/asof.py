@@ -11,7 +11,7 @@ pypi_baseurl = "https://pypi.org"
 downloads = {
     "name_mapping": requests.Request(
         "GET",
-        "https://github.com/regro/cf-graph-countyfair/raw/refs/heads/master/mappings/pypi/name_mapping.json",
+        "https://github.com/conda-forge/conda-forge-bot-data/raw/refs/heads/main/mappings/pypi/name_mapping.json",
         headers={"Accept": "application/json"},
     ).prepare(),
 }
